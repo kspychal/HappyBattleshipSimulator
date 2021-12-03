@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace HappyBattleshipSimulator
 {
@@ -10,14 +11,14 @@ namespace HappyBattleshipSimulator
         public enum Status
         {
             none = '.',
-            carrier = 'o',
-            battleship = 'o',
-            cruiser = 'o',
-            submarine = 'o',
-            destroyer = 'o',
+            carrier = 'a',
+            battleship = 'b',
+            cruiser = 'c',
+            submarine = 'd',
+            destroyer = 'e',
             hitted = 'x',
             missed = 'm',
-            sunk = 'x'
+            sunk = 's'
         }
 
         public class Position
@@ -50,17 +51,26 @@ namespace HappyBattleshipSimulator
 
         public class Ship
         {
-            int hits = 0;
-            protected int size = 0;
+            protected int hits;
+            public Ship()
+            {
+                hits = 0;
+            }
+
+            protected int size;
             protected Status status;
 
             public void hit()
             {
                 hits++;
-                if (hits >= size) status = Status.sunk;
+                if (hits >= size)
+                {
+                    this.status = Status.sunk;
+                    Console.WriteLine("---------------------------------------------------------------------sunk-------------------------------------------------------------------" + this.getSize() + ":" + hits);
+                }
             }
 
-            public virtual int getSize() { return size; }
+            public int getSize() { return size; }
             public Status getStatus() { return status; }
         }
 
@@ -71,61 +81,41 @@ namespace HappyBattleshipSimulator
                 size = 5;
                 status = Status.carrier;
             }
-            public override int getSize()
-            {
-                return size;
-            }
         }
 
         protected class Battleship : Ship
         {
-            public Battleship()
+            public Battleship() : base()
             {
                 size = 4;
                 status = Status.battleship;
-            }
-            public override int getSize()
-            {
-                return size;
             }
         }
 
         protected class Cruiser : Ship
         {
-            public Cruiser()
+            public Cruiser() : base()
             {
                 size = 3;
                 status = Status.cruiser;
-            }
-            public override int getSize()
-            {
-                return size;
             }
         }
 
         protected class Submarine : Ship
         {
-            public Submarine()
+            public Submarine() : base()
             {
                 size = 3;
                 status = Status.submarine;
-            }
-            public override int getSize()
-            {
-                return size;
             }
         }
 
         protected class Destroyer : Ship
         {
-            public Destroyer()
+            public Destroyer() : base()
             {
                 size = 2;
                 status = Status.destroyer;
-            }
-            public override int getSize()
-            {
-                return size;
             }
         }
 
@@ -196,6 +186,8 @@ namespace HappyBattleshipSimulator
             }
 
 
+
+
             private void randomlyPlaceShip(Ship ship)
             {
                 int randomX, randomY;
@@ -212,7 +204,7 @@ namespace HappyBattleshipSimulator
                     {
                         if (isVertical)
                         {
-                            if ((char)positions.ElementAt((gameboardSize * (randomY + i) + randomX)).status != '.')
+                            if (positions.ElementAt((gameboardSize * (randomY + i) + randomX)).status != Status.none)
                             {
                                 flag = true;
                                 break;
@@ -220,7 +212,7 @@ namespace HappyBattleshipSimulator
                         }
                         else
                         {
-                            if ((char)positions.ElementAt((gameboardSize * randomY + randomX + i)).status != '.')
+                            if (positions.ElementAt((gameboardSize * randomY + randomX + i)).status != Status.none)
                             {
                                 flag = true;
                                 break;
@@ -236,11 +228,11 @@ namespace HappyBattleshipSimulator
                 {
                     if (isVertical == true)
                     {
-                        positions.ElementAt((gameboardSize * (randomY + i) + randomX)).status = (Status)'o';
+                        positions.ElementAt((gameboardSize * (randomY + i) + randomX)).status = ship.getStatus();
                     }
                     else
                     {
-                        positions.ElementAt((gameboardSize * randomY + randomX + i)).status = (Status)'o';
+                        positions.ElementAt((gameboardSize * randomY + randomX + i)).status = ship.getStatus();
                     }
                 }
             }
@@ -263,8 +255,11 @@ namespace HappyBattleshipSimulator
                 int randomFromPostionsToCheck = random.Next(0, positionsToCheck.Count());
                 int _x = positionsToCheck.ElementAt(randomFromPostionsToCheck).getX();
                 int _y = positionsToCheck.ElementAt(randomFromPostionsToCheck).getY();
+                Console.WriteLine("Shot near: x:" + x + "   y:" + y);
 
-                if ((char)opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == 'o')
+                if (opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.cruiser || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.battleship 
+                    || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.carrier || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.destroyer
+                    || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.submarine)
                 {
                     if (_x + 1 < 10 && positions.ElementAt(_x + 1 + gameboardSize * _y).status == Status.none && !positionsToCheck.Contains(new Position(_x + 1, _y))) positionsToCheck.Add(new Position(_x + 1, _y));
                     if (_x - 1 > -1 && positions.ElementAt(_x - 1 + gameboardSize * _y).status == Status.none && !positionsToCheck.Contains(new Position(_x - 1, _y))) positionsToCheck.Add(new Position(_x - 1, _y));
@@ -272,7 +267,10 @@ namespace HappyBattleshipSimulator
                     if (_y - 1 > -1 && positions.ElementAt(_x + gameboardSize * (_y - 1)).status == Status.none && !positionsToCheck.Contains(new Position(_x, _y - 1))) positionsToCheck.Add(new Position(_x, _y - 1));
 
                     positions.ElementAt(_x + gameboardSize * _y).hit();
-                    opponentGameboard.ships.Find(x => x.getStatus() == opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status).hit();
+                    Ship tmpShip = opponentGameboard.ships.Find(ship => ship.getStatus() == opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status);
+                    if (tmpShip != null) tmpShip.hit();
+                    //opponentGameboard.ships.
+                    //opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).hit();
                     /*foreach (Ship ship in opponentGameboard.ships)
                     {
                         if (opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == ship.getStatus())
@@ -285,10 +283,6 @@ namespace HappyBattleshipSimulator
                 else positions.ElementAt(_x + gameboardSize * _y).status = Status.missed;
 
                 positionsToCheck.RemoveAt(randomFromPostionsToCheck);
-                if (positionsToCheck.Count() == 0)
-                {
-                    positionsToCheck.Clear();
-                }
             }
 
 
@@ -301,8 +295,11 @@ namespace HappyBattleshipSimulator
                     randomY = random.Next(0, gameboardSize);
                     randomPosition = gameboardSize * randomY + randomX;
                 } while (positions.ElementAt(randomPosition).status != Status.none);
+                Console.WriteLine("random shot: x:" + randomX + " y:" + randomY);
 
-                if ((char)opponentGameboard.positions.ElementAt(randomPosition).status == 'o')
+                if (opponentGameboard.positions.ElementAt(randomPosition).status == Status.cruiser || opponentGameboard.positions.ElementAt(randomPosition).status == Status.battleship 
+                    || opponentGameboard.positions.ElementAt(randomPosition).status == Status.carrier || opponentGameboard.positions.ElementAt(randomPosition).status == Status.destroyer
+                    || opponentGameboard.positions.ElementAt(randomPosition).status == Status.submarine)
                 {
                     x = randomX;
                     y = randomY;
@@ -311,15 +308,19 @@ namespace HappyBattleshipSimulator
                     if (x - 1 > -1 && positions.ElementAt(x - 1 + gameboardSize * y).status == Status.none && !positionsToCheck.Contains(new Position(x - 1, y))) positionsToCheck.Add(new Position(x - 1, y));
                     if (y + 1 < 10 && positions.ElementAt(x + gameboardSize * (y + 1)).status == Status.none && !positionsToCheck.Contains(new Position(x, y + 1))) positionsToCheck.Add(new Position(x, y + 1));
                     if (y - 1 > -1 && positions.ElementAt(x + gameboardSize * (y - 1)).status == Status.none && !positionsToCheck.Contains(new Position(x, y - 1))) positionsToCheck.Add(new Position(x, y - 1));
-                    foreach (Ship ship in opponentGameboard.ships)
+
+                    positions.ElementAt(randomPosition).hit();
+                    opponentGameboard.ships.Find(ship => ship.getStatus() == opponentGameboard.positions.ElementAt(randomPosition).status).hit();
+                    //tmpShip.hit();
+                    /*foreach (Ship ship in opponentGameboard.ships)
                     {
                         if (opponentGameboard.positions.ElementAt(x + gameboardSize * y).status == ship.getStatus())
                         {
+                            positions.ElementAt(randomPosition).hit();
                             ship.hit();
                             break;
                         }
-                    }
-                    positions.ElementAt(randomPosition).hit();
+                    }*/
                 }
                 else positions.ElementAt(randomPosition).status = Status.missed;
             }
@@ -353,25 +354,22 @@ namespace HappyBattleshipSimulator
                 //{
                 while (!p1.ownGameboard.shipsAreSunk() && !p2.ownGameboard.shipsAreSunk())
                 {
-                    Console.Clear();
-                    //Console.WriteLine("P1");
-                    //p1.ownGameboard.print();
+                    /*Console.Clear();
+                    Console.WriteLine("P1");
+                    p1.ownGameboard.print();*/
                     p1.fireboard.shoot(p2.ownGameboard);
-                    //if (p2.ownGameboard.shipsAreSunk()) break;
-                    //break
-                    //p1.fireboard.print();
-                    //Console.Read();
-                    //Thread.Sleep(1000);
+                    if (p2.ownGameboard.shipsAreSunk()) break;
+                    /*p1.fireboard.print();
+                    Thread.Sleep(1000);*/
 
-                    Console.Clear();
-                    //Console.WriteLine("P2");
-                    //p2.ownGameboard.print();
+                    /*Console.Clear();
+                    Console.WriteLine("P2");
+                    p2.ownGameboard.print();*/
                     p2.fireboard.shoot(p1.ownGameboard);
-                    //break
-                    //p2.fireboard.print();
-                    //Console.Read();
-                    //Thread.Sleep(1000);
+                    /*p2.fireboard.print();
+                    Thread.Sleep(1000);*/
                 }
+                Console.Clear();
                 Console.WriteLine("P1");
                 p1.ownGameboard.print();
                 p2.fireboard.print();

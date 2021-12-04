@@ -38,6 +38,11 @@ namespace HappyBattleshipSimulator
                 status = Status.hitted;
             }
 
+            public void setStatusMissed()
+            {
+                this.status = Status.missed;
+            }
+
             public int getX()
             {
                 return x;
@@ -46,6 +51,11 @@ namespace HappyBattleshipSimulator
             public int getY()
             {
                 return y;
+            }
+
+            public Status getStatus()
+            {
+                return status;
             }
         }
 
@@ -69,6 +79,7 @@ namespace HappyBattleshipSimulator
                     Console.WriteLine("---------------------------------------------------------------------sunk-------------------------------------------------------------------" + this.getSize() + ":" + hits);
                 }
             }
+            
 
             public int getSize() { return size; }
             public Status getStatus() { return status; }
@@ -76,7 +87,7 @@ namespace HappyBattleshipSimulator
 
         protected class Carrier : Ship
         {
-            public Carrier()
+            public Carrier() : base()
             {
                 size = 5;
                 status = Status.carrier;
@@ -154,27 +165,49 @@ namespace HappyBattleshipSimulator
                 Console.WriteLine();
 
             }
+
+            protected Position getPositionFromList(int x, int y)
+            {
+                return positions.ElementAt(x + y * gameboardSize);
+            }
+
+            public Status getPositionStatus(int x, int y)
+            {
+                return positions.ElementAt(x + y * gameboardSize).getStatus();
+            }
+
+            protected void setPositionStatus(int x, int y, Status s)
+            {
+                positions.ElementAt(x + y * gameboardSize).status = s;
+            }
+
+            public bool positionIsShip(int x, int y)
+            {
+                return getPositionStatus(x, y) == Status.battleship || getPositionStatus(x, y) == Status.carrier ||
+                    getPositionStatus(x, y) == Status.cruiser || getPositionStatus(x, y) == Status.destroyer ||
+                    getPositionStatus(x, y) == Status.submarine;
+            }
         }
 
         public class OwnGameboard : Gameboard
         {
-            public OwnGameboard() : base()
-            {
-                ships.Add(carrier);
-                ships.Add(battleship);
-                ships.Add(cruiser);
-                ships.Add(submarine);
-                ships.Add(destroyer);
-                foreach (Ship ship in ships) randomlyPlaceShip(ship);
-                print();
-            }
-
             private Carrier carrier = new Carrier();
             private Battleship battleship = new Battleship();
             private Cruiser cruiser = new Cruiser();
             private Submarine submarine = new Submarine();
             private Destroyer destroyer = new Destroyer();
             public List<Ship> ships = new List<Ship>();
+
+            public OwnGameboard() : base()
+            {
+                ships.Add(new Carrier());
+                ships.Add(new Battleship());
+                ships.Add(new Cruiser());
+                ships.Add(new Submarine());
+                ships.Add(new Destroyer());
+                foreach (Ship ship in ships) randomlyPlaceShip(ship);
+                print();
+            }
 
             public bool shipsAreSunk()
             {
@@ -184,9 +217,6 @@ namespace HappyBattleshipSimulator
                 }
                 return true;
             }
-
-
-
 
             private void randomlyPlaceShip(Ship ship)
             {
@@ -204,7 +234,7 @@ namespace HappyBattleshipSimulator
                     {
                         if (isVertical)
                         {
-                            if (positions.ElementAt((gameboardSize * (randomY + i) + randomX)).status != Status.none)
+                            if(getPositionStatus(randomX, randomY + i) != Status.none)
                             {
                                 flag = true;
                                 break;
@@ -212,7 +242,7 @@ namespace HappyBattleshipSimulator
                         }
                         else
                         {
-                            if (positions.ElementAt((gameboardSize * randomY + randomX + i)).status != Status.none)
+                            if(getPositionStatus(randomX + i, randomY) != Status.none)
                             {
                                 flag = true;
                                 break;
@@ -223,16 +253,15 @@ namespace HappyBattleshipSimulator
                     break;
                 } while (true);
 
-                //ship.placeShip(randomX, randomY, isVertical, ship.getSize());
                 for (int i = 0; i < ship.getSize(); i++)
                 {
-                    if (isVertical == true)
+                    if (isVertical)
                     {
-                        positions.ElementAt((gameboardSize * (randomY + i) + randomX)).status = ship.getStatus();
+                        setPositionStatus(randomX, randomY + i, ship.getStatus());
                     }
                     else
                     {
-                        positions.ElementAt((gameboardSize * randomY + randomX + i)).status = ship.getStatus();
+                        setPositionStatus(randomX + i, randomY, ship.getStatus());
                     }
                 }
             }
@@ -240,89 +269,74 @@ namespace HappyBattleshipSimulator
 
         public class Fireboard : Gameboard
         {
-            int x, y;
-            List<Position> positionsToCheck = new List<Position>();
-
+            List<Position> positionsToCheck;
+            public Fireboard() : base()
+            {
+                positionsToCheck = new List<Position>();
+            }
 
             public void shoot(OwnGameboard opponentGameboard)
             {
-                if (positionsToCheck.Count() > 0) shootNear(opponentGameboard);
-                else randomShoot(opponentGameboard);
+                if (positionsToCheck.Count() > 0) shootNeighbours(opponentGameboard);
+                else shootRandom(opponentGameboard);
             }
 
-            public void shootNear(OwnGameboard opponentGameboard)
+            public void shootNeighbours(OwnGameboard opponentGameboard)
             {
                 int randomFromPostionsToCheck = random.Next(0, positionsToCheck.Count());
                 int _x = positionsToCheck.ElementAt(randomFromPostionsToCheck).getX();
                 int _y = positionsToCheck.ElementAt(randomFromPostionsToCheck).getY();
-                Console.WriteLine("Shot near: x:" + x + "   y:" + y);
+                Console.WriteLine("Shot neighbour: x:" + _x + "   y:" + _y);
 
-                if (opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.cruiser || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.battleship 
-                    || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.carrier || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.destroyer
-                    || opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == Status.submarine)
+                if (opponentGameboard.positionIsShip(_x, _y))
                 {
-                    if (_x + 1 < 10 && positions.ElementAt(_x + 1 + gameboardSize * _y).status == Status.none && !positionsToCheck.Contains(new Position(_x + 1, _y))) positionsToCheck.Add(new Position(_x + 1, _y));
-                    if (_x - 1 > -1 && positions.ElementAt(_x - 1 + gameboardSize * _y).status == Status.none && !positionsToCheck.Contains(new Position(_x - 1, _y))) positionsToCheck.Add(new Position(_x - 1, _y));
-                    if (_y + 1 < 10 && positions.ElementAt(_x + gameboardSize * (_y + 1)).status == Status.none && !positionsToCheck.Contains(new Position(_x, _y + 1))) positionsToCheck.Add(new Position(_x, _y + 1));
-                    if (_y - 1 > -1 && positions.ElementAt(_x + gameboardSize * (_y - 1)).status == Status.none && !positionsToCheck.Contains(new Position(_x, _y - 1))) positionsToCheck.Add(new Position(_x, _y - 1));
+                    if (_x + 1 < 10 && getPositionStatus(_x + 1, _y) == Status.none && positionsToCheck.Find(p => p.getX() == _x + 1 && p.getY() == _y) == null)
+                        positionsToCheck.Add(new Position(_x + 1, _y));
+                    if (_x - 1 > -1 && getPositionStatus(_x - 1, _y) == Status.none && positionsToCheck.Find(p => p.getX() == _x - 1 && p.getY() == _y) == null)
+                        positionsToCheck.Add(new Position(_x - 1, _y));
+                    if (_y + 1 < 10 && getPositionStatus(_x, _y + 1) == Status.none && positionsToCheck.Find(p => p.getX() == _x && p.getY() == _y + 1) == null)
+                        positionsToCheck.Add(new Position(_x, _y + 1));
+                    if (_y - 1 > -1 && getPositionStatus(_x, _y - 1) == Status.none && positionsToCheck.Find(p => p.getX() == _x && p.getY() == _y - 1) == null)
+                        positionsToCheck.Add(new Position(_x, _y - 1));
 
-                    positions.ElementAt(_x + gameboardSize * _y).hit();
-                    Ship tmpShip = opponentGameboard.ships.Find(ship => ship.getStatus() == opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status);
-                    if (tmpShip != null) tmpShip.hit();
-                    //opponentGameboard.ships.
-                    //opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).hit();
-                    /*foreach (Ship ship in opponentGameboard.ships)
-                    {
-                        if (opponentGameboard.positions.ElementAt(_x + gameboardSize * _y).status == ship.getStatus())
-                        {
-                            ship.hit();
-                            break;
-                        }
-                    }*/
+                    opponentGameboard.ships.Find(s => s.getStatus() == opponentGameboard.getPositionStatus(_x,_y)).hit();
+                    getPositionFromList(_x, _y).hit();
                 }
-                else positions.ElementAt(_x + gameboardSize * _y).status = Status.missed;
+                else getPositionFromList(_x, _y).setStatusMissed();
 
                 positionsToCheck.RemoveAt(randomFromPostionsToCheck);
+                foreach (Position p in positionsToCheck)
+                {
+                    Console.WriteLine(p.getX() + "," + p.getY());
+                }
             }
 
 
-            public void randomShoot(OwnGameboard opponentGameboard)
+            public void shootRandom(OwnGameboard opponentGameboard)
             {
-                int randomX, randomY, randomPosition;
+                int randomX, randomY;
                 do
                 {
                     randomX = random.Next(0, gameboardSize);
                     randomY = random.Next(0, gameboardSize);
-                    randomPosition = gameboardSize * randomY + randomX;
-                } while (positions.ElementAt(randomPosition).status != Status.none);
+                } while (getPositionStatus(randomX, randomY) != Status.none);
                 Console.WriteLine("random shot: x:" + randomX + " y:" + randomY);
 
-                if (opponentGameboard.positions.ElementAt(randomPosition).status == Status.cruiser || opponentGameboard.positions.ElementAt(randomPosition).status == Status.battleship 
-                    || opponentGameboard.positions.ElementAt(randomPosition).status == Status.carrier || opponentGameboard.positions.ElementAt(randomPosition).status == Status.destroyer
-                    || opponentGameboard.positions.ElementAt(randomPosition).status == Status.submarine)
+                if (opponentGameboard.positionIsShip(randomX, randomY))
                 {
-                    x = randomX;
-                    y = randomY;
+                    if (randomX + 1 < 10 && getPositionStatus(randomX + 1, randomY) == Status.none && positionsToCheck.Find(p => p.getX() == randomX + 1 && p.getY() == randomY) == null)
+                        positionsToCheck.Add(new Position(randomX + 1, randomY));
+                    if (randomX - 1 > -1 && getPositionStatus(randomX - 1, randomY) == Status.none && positionsToCheck.Find(p => p.getX() == randomX - 1 && p.getY() == randomY) == null)
+                        positionsToCheck.Add(new Position(randomX - 1, randomY));
+                    if (randomY + 1 < 10 && getPositionStatus(randomX, randomY + 1) == Status.none && positionsToCheck.Find(p => p.getX() == randomX && p.getY() == randomY + 1) == null)
+                        positionsToCheck.Add(new Position(randomX, randomY + 1));
+                    if (randomY - 1 > -1 && getPositionStatus(randomX, randomY - 1) == Status.none && positionsToCheck.Find(p => p.getX() == randomX && p.getY() == randomY - 1) == null)
+                        positionsToCheck.Add(new Position(randomX, randomY - 1));
 
-                    if (x + 1 < 10 && positions.ElementAt(x + 1 + gameboardSize * y).status == Status.none && !positionsToCheck.Contains(new Position(x + 1, y))) positionsToCheck.Add(new Position(x + 1, y));
-                    if (x - 1 > -1 && positions.ElementAt(x - 1 + gameboardSize * y).status == Status.none && !positionsToCheck.Contains(new Position(x - 1, y))) positionsToCheck.Add(new Position(x - 1, y));
-                    if (y + 1 < 10 && positions.ElementAt(x + gameboardSize * (y + 1)).status == Status.none && !positionsToCheck.Contains(new Position(x, y + 1))) positionsToCheck.Add(new Position(x, y + 1));
-                    if (y - 1 > -1 && positions.ElementAt(x + gameboardSize * (y - 1)).status == Status.none && !positionsToCheck.Contains(new Position(x, y - 1))) positionsToCheck.Add(new Position(x, y - 1));
-
-                    positions.ElementAt(randomPosition).hit();
-                    opponentGameboard.ships.Find(ship => ship.getStatus() == opponentGameboard.positions.ElementAt(randomPosition).status).hit();
-                    //tmpShip.hit();
-                    /*foreach (Ship ship in opponentGameboard.ships)
-                    {
-                        if (opponentGameboard.positions.ElementAt(x + gameboardSize * y).status == ship.getStatus())
-                        {
-                            positions.ElementAt(randomPosition).hit();
-                            ship.hit();
-                            break;
-                        }
-                    }*/
+                    opponentGameboard.ships.Find(ship => ship.getStatus() == opponentGameboard.getPositionStatus(randomX, randomY)).hit();
+                    getPositionFromList(randomX, randomY).hit();
                 }
-                else positions.ElementAt(randomPosition).status = Status.missed;
+                else getPositionFromList(randomX, randomY).setStatusMissed();
             }
         }
 
@@ -330,18 +344,6 @@ namespace HappyBattleshipSimulator
         {
             public OwnGameboard ownGameboard = new OwnGameboard();
             public Fireboard fireboard = new Fireboard();
-            public Player()
-            {
-                /*while (!ownGameboard.shipsAreSunk())
-                {
-                    Console.Clear();
-                    ownGameboard.print();
-                    fireboard.shoot(ownGameboard);
-                    fireboard.print();
-                    //Thread.Sleep(1);
-                    
-                }*/
-            }
         }
 
         public class Game
@@ -355,21 +357,23 @@ namespace HappyBattleshipSimulator
                 while (!p1.ownGameboard.shipsAreSunk() && !p2.ownGameboard.shipsAreSunk())
                 {
                     /*Console.Clear();
-                    Console.WriteLine("P1");
+                    
                     p1.ownGameboard.print();*/
+                    Console.WriteLine("P1");
                     p1.fireboard.shoot(p2.ownGameboard);
                     if (p2.ownGameboard.shipsAreSunk()) break;
-                    /*p1.fireboard.print();
-                    Thread.Sleep(1000);*/
+                    p1.fireboard.print();
+                    //Thread.Sleep(1000);
 
                     /*Console.Clear();
-                    Console.WriteLine("P2");
+                    
                     p2.ownGameboard.print();*/
+                    Console.WriteLine("P2");
                     p2.fireboard.shoot(p1.ownGameboard);
-                    /*p2.fireboard.print();
-                    Thread.Sleep(1000);*/
+                    p2.fireboard.print();
+                    //Thread.Sleep(1000);
                 }
-                Console.Clear();
+                //Console.Clear();
                 Console.WriteLine("P1");
                 p1.ownGameboard.print();
                 p2.fireboard.print();

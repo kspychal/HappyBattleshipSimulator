@@ -5,6 +5,6 @@
 
 -Shooting function is switching between two modes - 1)random shoot (while we don't have any neighbours to check) and 2)shoot neighbour, which shoots near just hitted ship
 
--I could improve random shooting algorithm by checking every second board position (since every ship size is at least 2)
+-Random shooting algorithm can be improved by checking every second board position (since every ship size is at least 2 - in Milton Bradley or Hasbro version of Battleship Game, but when we add to app ship in size 1 - this algorithm won't work properly)
 
 -Change the value of one variable (GameboardSize) makes possibility to decrease/increase size of the board
